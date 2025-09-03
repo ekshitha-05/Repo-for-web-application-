@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emotional Voice Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      text-align: center;
+      padding: 2rem;
+    }
+    select, button, input {
+      margin: 10px;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    .chat {
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #fff;
+      border-radius: 10px;
+      text-align: left;
+      height: 300px;
+      overflow-y: auto;
+    }
+    .user { color: blue; font-weight: bold; }
+    .assistant { color: green; font-weight: bold; }
+    .message { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>🎤 Emotional Voice Assistant</h1>
+
+  <label for="assistantName">Assistant Name:</label>
+  <input type="text" id="assistantName" placeholder="Enter a name" value="Sophia"><br>
+
+  <label for="voiceSelect">Choose Voice:</label>
+  <select id="voiceSelect"></select><br>
+
+  <button onclick="startListening()">🎙️ Speak</button>
+  <button onclick="stopListening()">🛑 Stop</button>
+  <br>
+  <input type="text" id="userInput" placeholder="Type a message..." style="width:60%">
+  <button onclick="sendMessage()">Send</button>
+
+  <div class="chat" id="chatBox"></div>
+
+  <script>
+    let recognition;
+    let isListening = false;
+    let voices = [];
+    let selectedVoice = null;
+
+    // Load available voices
+    function loadVoices() {
+      voices = speechSynthesis.getVoices();
+      let voiceSelect = document.getElementById("voiceSelect");
+      voiceSelect.innerHTML = "";
+      voices.forEach((voice, i) => {
+        let option = document.createElement("option");
+        option.value = i;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelect.appendChild(option);
+      });
+      voiceSelect.onchange = () => {
+        selectedVoice = voices[voiceSelect.value];
+      };
+      selectedVoice = voices[0]; // default
+    }
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    // Speech recognition
+    if ("webkitSpeechRecognition" in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onresult = function(event) {
+        let transcript = event.results[event.results.length - 1][0].transcript;
+        addMessage("You", transcript);
+        respond(transcript);
+      };
+    } else {
+      alert("Sorry, your browser does not support Speech Recognition.");
+    }
+
+    function startListening() {
+      if (!isListening) {
+        recognition.start();
+        isListening = true;
+      }
+    }
+
+    function stopListening() {
+      if (isListening) {
+        recognition.stop();
+        isListening = false;
+      }
+    }
+
+    // Add message to chat box
+    function addMessage(sender, text) {
+      let chatBox = document.getElementById("chatBox");
+      let msg = document.createElement("div");
+      msg.className = "message";
+      msg.innerHTML = `<span class="${sender === "You" ? "user" : "assistant"}">${sender}:</span> ${text}`;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Simple emotion detection
+    function detectEmotion(text) {
+      text = text.toLowerCase();
+      if (text.includes("happy") || text.includes("great") || text.includes("awesome")) {
+        return "happy";
+      } else if (text.includes("sad") || text.includes("tired") || text.includes("upset")) {
+        return "sad";
+      } else if (text.includes("angry") || text.includes("mad") || text.includes("furious")) {
+        return "angry";
+      }
+      return "neutral";
+    }
+
+    // Respond with emotion-aware reply
+    function respond(message) {
+      let name = document.getElementById("assistantName").value || "Assistant";
+      let emotion = detectEmotion(message);
+      let response = "";
+
+      switch (emotion) {
+        case "happy":
+          response = `I'm glad to hear that! You sound really happy today.`;
+          break;
+        case "sad":
+          response = `I'm sorry you're feeling sad. I'm here for you.`;
+          break;
+        case "angry":
+          response = `I understand you're upset. Let's take a deep breath together.`;
+          break;
+        default:
+          response = `Thanks for sharing that.`;
+      }
+
+      let finalResponse = `${name}: ${response}`;
+      addMessage(name, response);
+
+      let utterance = new SpeechSynthesisUtterance(response);
+      if (selectedVoice) utterance.voice = selectedVoice;
+      speechSynthesis.speak(utterance);
+    }
+
+    // Handle text input
+    function sendMessage() {
+      let input = document.getElementById("userInput");
+      let text = input.value.trim();
+      if (text !== "") {
+        addMessage("You", text);
+        respond(text);
+        input.value = "";
+      }
+    }
+  </script>
+</body>
+</html>
